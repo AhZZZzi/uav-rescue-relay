@@ -80,12 +80,20 @@ def init_db():
                 status TEXT NOT NULL,
                 lat REAL,
                 lon REAL,
+                address TEXT,
                 notes TEXT,
                 received_at TEXT NOT NULL,
                 dispatched_at TEXT,
                 completed_at TEXT
             )
         """)
+        # Migration: add address column if it doesn't exist yet
+        # (handles the case where relay.db was created before this column was added)
+        cols = [row["name"] for row in conn.execute("PRAGMA table_info(requests)").fetchall()]
+        if "address" not in cols:
+            conn.execute("ALTER TABLE requests ADD COLUMN address TEXT")
+            print("[db migration] added 'address' column to requests table")
+
         # Seed default accounts only if the users table is empty,
         # so this doesn't reset passwords on every restart.
         existing = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
@@ -218,6 +226,7 @@ async def patient_endpoint(websocket: WebSocket):
                 "status": "pending",
                 "lat": payload.get("lat"),
                 "lon": payload.get("lon"),
+                "address": payload.get("address"),
                 "notes": payload.get("notes"),
                 "received_at": datetime.now(timezone.utc).isoformat(),
                 "dispatched_at": None,
@@ -225,10 +234,10 @@ async def patient_endpoint(websocket: WebSocket):
             }
             with get_db() as conn:
                 conn.execute(
-                    """INSERT INTO requests (id, status, lat, lon, notes, received_at)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    """INSERT INTO requests (id, status, lat, lon, address, notes, received_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     (record["id"], record["status"], record["lat"],
-                     record["lon"], record["notes"], record["received_at"]),
+                     record["lon"], record["address"], record["notes"], record["received_at"]),
                 )
             print(f"[new request] {record}")
 
