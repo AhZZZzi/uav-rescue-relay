@@ -256,8 +256,6 @@ async def patient_endpoint(websocket: WebSocket):
 async def staff_endpoint(websocket: WebSocket, token: str = ""):
     """Staff dashboard connects here for a live feed of new requests + drone telemetry.
     Requires ?token=<token> from /auth/login in the connection URL."""
-  print(active_tokens)
-  print(token)  
   if token not in active_tokens:
         await websocket.close(code=4401)  # custom code: unauthorized
         return
